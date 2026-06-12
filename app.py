@@ -598,10 +598,7 @@ async def get_layer_geojson(name: str, request: Request):
             if bbox:
                 gdf_filtered = spatial_tools._filter_by_bbox(gdf, bbox)
                 
-                # Limit features to keep serialization fast and payload sizes small
-                max_features = 3000
-                if len(gdf_filtered) > max_features:
-                    gdf_filtered = gdf_filtered.sample(n=max_features, random_state=42).copy()
+                # Limit features removed: rely on aggressive dynamic simplification instead
                 
                 # Dynamic geometry simplification to optimize client-side rendering
                 try:
@@ -611,14 +608,15 @@ async def get_layer_geojson(name: str, request: Request):
                     span = max(span_lon, span_lat)
                     
                     # Simplify based on viewport scale
-                    tolerance = span / 3000.0
+                    tolerance = span / 1500.0
                     if tolerance > 0.000002:
                         gdf_filtered = gdf_filtered.copy()
                         simplified = gdf_filtered.geometry.simplify(tolerance, preserve_topology=False)
                         empty_mask = simplified.is_empty
                         final_geom = simplified.copy()
                         if empty_mask.any():
-                            final_geom[empty_mask] = gdf_filtered.geometry[empty_mask].envelope
+                            # Convert sub-pixel geometries to centroids instead of envelopes for max performance
+                            final_geom[empty_mask] = gdf_filtered.geometry[empty_mask].centroid
                         gdf_filtered["geometry"] = final_geom
                 except Exception as se:
                     print(f"Error simplifying geometries for layer {name}: {se}")
@@ -635,7 +633,7 @@ async def get_layer_geojson(name: str, request: Request):
                     empty_mask = simplified.is_empty
                     final_geom = simplified.copy()
                     if empty_mask.any():
-                        final_geom[empty_mask] = gdf_simplified.geometry[empty_mask].envelope
+                        final_geom[empty_mask] = gdf_simplified.geometry[empty_mask].centroid
                     gdf_simplified["geometry"] = final_geom
                     gdf = gdf_simplified
                 except Exception as se:
@@ -666,6 +664,48 @@ async def execute_tool_endpoint(tool_name: str, request: Request):
     except Exception as e:
         traceback.print_exc()
         return JSONResponse({"error": "Tool execution failed"}, status_code=500)
+
+
+import tempfile
+import zipfile
+import io
+import geopandas as gpd
+
+@app.post("/api/download_shp")
+async def download_shp(request: Request):
+    try:
+        body = await request.json()
+        geojson_data = body.get("geojson")
+        if not geojson_data or "features" not in geojson_data or not geojson_data["features"]:
+            return JSONResponse({"error": "No valid features to export"}, status_code=400)
+        
+        # Convert GeoJSON dict to GeoDataFrame
+        gdf = gpd.GeoDataFrame.from_features(geojson_data["features"], crs="EPSG:4326")
+        
+        # Shapefile column names max length is 10 chars, sanitize if necessary
+        for col in gdf.columns:
+            if col != "geometry" and len(col) > 10:
+                gdf.rename(columns={col: col[:10]}, inplace=True)
+                
+        # Write to temporary zip in memory
+        mem_zip = io.BytesIO()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            shp_path = os.path.join(tmpdir, "aether_export.shp")
+            gdf.to_file(shp_path, driver="ESRI Shapefile")
+            
+            with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for filename in os.listdir(tmpdir):
+                    zf.write(os.path.join(tmpdir, filename), filename)
+                    
+        mem_zip.seek(0)
+        return StreamingResponse(
+            mem_zip, 
+            media_type="application/zip", 
+            headers={"Content-Disposition": "attachment; filename=aether_export.zip"}
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse({"error": f"Failed to export shapefile: {str(e)}"}, status_code=500)
 
 
 if __name__ == "__main__":

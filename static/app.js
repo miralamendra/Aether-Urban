@@ -1597,6 +1597,65 @@
       });
     }
 
+    const btnDownload = $('#btnGISDownload');
+    if (btnDownload) {
+      btnDownload.addEventListener('click', async () => {
+        let features = [];
+        const extractGeoJSON = (layer) => {
+          if (layer.toGeoJSON) {
+            let gj = layer.toGeoJSON();
+            if (gj.type === 'FeatureCollection') {
+              features.push(...gj.features);
+            } else if (gj.type === 'Feature') {
+              features.push(gj);
+            }
+          }
+        };
+
+        highlightLayer.eachLayer(layer => {
+          if (layer.eachLayer) layer.eachLayer(extractGeoJSON);
+          else extractGeoJSON(layer);
+        });
+
+        gisLayers.eachLayer(layer => {
+          if (layer.eachLayer) layer.eachLayer(extractGeoJSON);
+          else extractGeoJSON(layer);
+        });
+
+        if (features.length === 0) {
+          showNotification('No active spatial queries on map to download.', 'error');
+          return;
+        }
+
+        showNotification('Preparing shapefile download...', 'info');
+        setStatus('Exporting...', 'var(--warn)');
+        
+        try {
+          const res = await fetch(`${API_BASE}/api/download_shp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ geojson: { type: 'FeatureCollection', features: features } })
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'aether_export.zip';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+          showNotification('Download complete', 'success');
+        } catch (e) {
+          showNotification(`Export failed: ${e.message}`, 'error');
+        } finally {
+          setStatus('Ready', 'var(--green)');
+        }
+      });
+    }
+
     // Isochrone modal handlers
     const isoConfirm = $('#isochroneConfirm');
     const isoCancel = $('#isochroneCancel');

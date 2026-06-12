@@ -847,6 +847,12 @@ html { scrollbar-color: var(--red) var(--panel); scrollbar-width: thin; }
   margin: 0 auto 12px;
   width: calc(100% - 32px);
   transition: border-color 0.15s, box-shadow 0.15s;
+  animation: chatBoxGlow 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes chatBoxGlow {
+  0% { box-shadow: 0 0 4px color-mix(in srgb, var(--red) 20%, transparent); border-color: color-mix(in srgb, var(--fg) 12%, transparent); }
+  100% { box-shadow: 0 0 15px color-mix(in srgb, var(--red) 60%, transparent); border-color: color-mix(in srgb, var(--red) 50%, transparent); }
 }
 
 .chat-input-bar:focus-within {

@@ -128,11 +128,30 @@ def _to_geographic(gdf):
     return gdf.to_crs(SRC_CRS)
 
 
-def _safe_geojson(gdf, max_features=2000):
+def _safe_geojson(gdf, max_features=None):
     if gdf.crs and gdf.crs.to_epsg() != 4326:
         gdf = _to_geographic(gdf)
+        
     if max_features is not None and len(gdf) > max_features:
         gdf = gdf.sample(n=max_features, random_state=42).copy()
+        
+    try:
+        bounds = gdf.total_bounds
+        span = max(bounds[2] - bounds[0], bounds[3] - bounds[1])
+        # Use more aggressive simplification to maintain rendering speed for uncapped queries
+        tolerance = span / 1500.0
+        if tolerance > 0.000005:
+            gdf_simplified = gdf.copy()
+            simplified = gdf_simplified.geometry.simplify(tolerance, preserve_topology=False)
+            empty_mask = simplified.is_empty
+            final_geom = simplified.copy()
+            if empty_mask.any():
+                final_geom[empty_mask] = gdf_simplified.geometry[empty_mask].centroid
+            gdf_simplified["geometry"] = final_geom
+            gdf = gdf_simplified
+    except Exception as e:
+        print(f"Error simplifying in _safe_geojson: {e}")
+        
     return json.loads(gdf.to_json())
 
 

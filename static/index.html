@@ -6,7 +6,7 @@
   <meta name="description" content="Aether-Urban: Self-hosted AI Geospatial Analysis & Network Workspace for Colombo urban planning">
   <title>Aether-Urban | AI Geospatial Workspace</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=4" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e06c75' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M2 12h20'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg>">
 </head>
 <body>
@@ -167,7 +167,7 @@
 
           <div class="chat-input-bar">
             <div class="chat-input-top">
-              <textarea id="chatInput" placeholder="Ask about Colombo's urban landscape..." rows="1"></textarea>
+              <textarea id="chatInput" placeholder="Say 'Hi' to see what I can do for you..." rows="1"></textarea>
             </div>
             <div class="chat-input-bottom">
               <button class="stop-btn hidden" id="stopBtn" title="Stop generating">
@@ -190,6 +190,7 @@
               <button class="gis-btn" id="btnGISRoute" title="Find Shortest Path (Click 2 points)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 3.5-3.5V5h-3"/><path d="M18 8l3-3-3-3"/></svg>Route</button>
               <button class="gis-btn" id="btnGISIsochrone" title="Generate Isochrone (Click point)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Isochrone</button>
               <button class="gis-btn" id="btnGISClear" title="Clear GIS Layers"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>Clear Map</button>
+              <button class="gis-btn" id="btnGISDownload" title="Download Created Maps as Shapefile"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>Download SHP</button>
             </div>
             <div class="map-overlay-info" id="mapOverlay">
               <div><span class="label">Region</span></div>
@@ -219,6 +220,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
-  <script src="/static/app.js?v=3"></script>
+  <script src="/static/app.js?v=4"></script>
 </body>
 </html>
