@@ -1254,7 +1254,7 @@
       chatAbortController = new AbortController();
       const signal = chatAbortController.signal;
 
-      const provider = $('#providerSelect') ? $('#providerSelect').value : 'gemini';
+      const provider = $('#providerSelect') ? $('#providerSelect').value : 'gemma-4-31b-it';
       const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -433,7 +433,7 @@ async def ollama_chat_stream(message: str, history: list):
         yield sse_event("done", "")
 
 
-async def chat_stream(message: str, history: list, provider: str = "gemini"):
+async def chat_stream(message: str, history: list, provider: str = "gemma-4-31b-it"):
     # Sanitize inputs
     message, history = _sanitize_input(message, history)
 
@@ -466,7 +466,7 @@ async def chat_stream(message: str, history: list, provider: str = "gemini"):
             for attempt in range(3):
                 try:
                     response = client.models.generate_content_stream(
-                        model=MODEL,
+                        model=provider,
                         contents=contents,
                         config=config,
                     )
@@ -482,7 +482,7 @@ async def chat_stream(message: str, history: list, provider: str = "gemini"):
                     break
                 except Exception as e:
                     traceback.print_exc()
-                    print(f"Attempt {attempt + 1} for {MODEL} failed: {type(e).__name__}: {str(e)}")
+                    print(f"Attempt {attempt + 1} for {provider} failed: {type(e).__name__}: {str(e)}")
                     last_err = e
                     if "429" in str(e) and "quota" in str(e).lower():
                         break
@@ -552,11 +552,10 @@ async def chat_endpoint(request: Request):
         return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
     message = body.get("message", "")
     history = body.get("history", [])
-    provider = body.get("provider", "gemini")
+    provider = body.get("provider", "gemma-4-31b-it")
     if not message or not isinstance(message, str):
         return JSONResponse({"error": "Message is required"}, status_code=400)
-    if provider not in ("gemini", "ollama"):
-        provider = "gemini"
+    
     return StreamingResponse(
         chat_stream(message, history, provider),
         media_type="text/event-stream",
