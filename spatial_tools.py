@@ -111,7 +111,7 @@ def _to_geographic(gdf):
     return gdf.to_crs(SRC_CRS)
 
 
-def _safe_geojson(gdf, max_features=None):
+def _safe_geojson(gdf, max_features=2000):
     if gdf.crs and gdf.crs.to_epsg() != 4326:
         gdf = _to_geographic(gdf)
     if max_features is not None and len(gdf) > max_features:
