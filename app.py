@@ -461,37 +461,59 @@ async def chat_stream(message: str, history: list, provider: str = "gemini-2.5-f
         gemini_failed = False
         last_err_msg = "Unknown error"
         is_spatial = is_spatial_query(message)
+
+        # Dynamic fallback model candidates in case the selected model experiences 503/429 limits
+        fallback_candidates = [provider]
+        if provider == "gemini-2.5-flash":
+            fallback_candidates.extend(["gemini-2.5-flash-lite", "gemini-1.5-flash", "gemini-2.0-flash"])
+        elif provider == "gemini-3.5-flash":
+            fallback_candidates.extend(["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"])
+        else:
+            fallback_candidates.extend(["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"])
+            
+        # Clean duplicates while preserving priority order
+        seen = set()
+        fallback_candidates = [x for x in fallback_candidates if not (x in seen or seen.add(x))]
+
         for iteration in range(MAX_TOOL_ITERATIONS):
             is_first_turn = (iteration == 0) and is_spatial
             parser_state = StreamParserState(is_first_turn)
             last_err = None
             success = False
 
-            for attempt in range(2):
-                try:
-                    response = client.models.generate_content_stream(
-                        model=provider,
-                        contents=contents,
-                        config=config,
-                    )
-                    for chunk in response:
-                        if chunk.text:
-                            for ev_type, ev_content in process_stream_chunk(chunk.text, parser_state):
-                                yield sse_event(ev_type, ev_content)
-                    
-                    for ev_type, ev_content in flush_stream_parser(parser_state):
-                        yield sse_event(ev_type, ev_content)
-                    
-                    success = True
-                    break
-                except Exception as e:
-                    traceback.print_exc()
-                    print(f"Attempt {attempt + 1} for {provider} failed: {type(e).__name__}: {str(e)}")
-                    last_err = e
-                    last_err_msg = f"{type(e).__name__}: {str(e)}"
-                    if "429" in str(e) and "quota" in str(e).lower():
+            for model_candidate in fallback_candidates:
+                active_model = model_candidate
+                for attempt in range(2):
+                    try:
+                        response = client.models.generate_content_stream(
+                            model=active_model,
+                            contents=contents,
+                            config=config,
+                        )
+                        for chunk in response:
+                            if chunk.text:
+                                for ev_type, ev_content in process_stream_chunk(chunk.text, parser_state):
+                                    yield sse_event(ev_type, ev_content)
+                        
+                        for ev_type, ev_content in flush_stream_parser(parser_state):
+                            yield sse_event(ev_type, ev_content)
+                        
+                        success = True
                         break
-                    await asyncio.sleep(0.5 * (attempt + 1))
+                    except Exception as e:
+                        traceback.print_exc()
+                        print(f"Attempt {attempt + 1} for {active_model} failed: {type(e).__name__}: {str(e)}")
+                        last_err = e
+                        last_err_msg = f"{type(e).__name__}: {str(e)}"
+                        # If it is a quota limit (429) or high demand (503), try the next model candidate immediately
+                        if "429" in str(e) or "503" in str(e) or "quota" in str(e).lower() or "limit" in str(e).lower() or "unavailable" in str(e).lower():
+                            break
+                        await asyncio.sleep(0.5 * (attempt + 1))
+                
+                if success:
+                    break
+                else:
+                    yield sse_event("thinking", f"Model '{active_model}' is busy or unavailable. Retrying with fallback model...")
             
             if not success:
                 gemini_failed = True
