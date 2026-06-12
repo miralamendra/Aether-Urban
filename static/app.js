@@ -1841,6 +1841,7 @@
           activeGisTool = null;
           btnRoute.classList.remove('active');
           $('#map').style.cursor = '';
+          clearGisData();
         } else {
           activeGisTool = 'route';
           $$('.gis-btn').forEach(b => b.id !== 'btnGIS3D' && b.classList.remove('active'));
@@ -1859,6 +1860,7 @@
           activeGisTool = null;
           btnIso.classList.remove('active');
           $('#map').style.cursor = '';
+          clearGisData();
         } else {
           activeGisTool = 'isochrone';
           $$('.gis-btn').forEach(b => b.id !== 'btnGIS3D' && b.classList.remove('active'));
