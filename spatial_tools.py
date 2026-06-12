@@ -55,6 +55,23 @@ def _validate_column(gdf, column_name, layer_name):
         raise ValueError(f"Column '{column_name}' not found in '{layer_name}'. Available: {available}")
 
 
+_cache_proj = {}
+
+def _cache_projection(key, gdf):
+    gdf = gdf.reset_index(drop=True)
+    try:
+        gdf_proj = gdf.to_crs(PROJ_CRS)
+        _cache_proj[key] = gdf_proj
+        # Pre-calculate area once and store it in both dataframes
+        gdf["_area_ha"] = gdf_proj.geometry.area / 10000.0
+        gdf_proj["_area_ha"] = gdf["_area_ha"]
+    except Exception as e:
+        print(f"Failed to pre-project layer {key}: {e}")
+        gdf["_area_ha"] = 0.0
+    _cache[key] = gdf
+    return gdf
+
+
 def _load_layer(name):
     key = name.lower().strip()
     if key in _cache:
@@ -72,9 +89,7 @@ def _load_layer(name):
                 gdf = gdf.set_crs(SRC_CRS)
             elif gdf.crs.to_epsg() != 4326:
                 gdf = gdf.to_crs(SRC_CRS)
-            gdf = gdf.reset_index(drop=True)
-            _cache[key] = gdf
-            return gdf
+            return _cache_projection(key, gdf)
         except Exception as e:
             print(f"Error loading parquet {parquet_path}: {e}. Deleting corrupt cache and falling back to shapefile.")
             try:
@@ -91,7 +106,6 @@ def _load_layer(name):
         gdf = gdf.set_crs(SRC_CRS)
     elif gdf.crs.to_epsg() != 4326:
         gdf = gdf.to_crs(SRC_CRS)
-    gdf = gdf.reset_index(drop=True)
     
     # Save as GeoParquet for subsequent lightning-fast reads
     try:
@@ -99,11 +113,14 @@ def _load_layer(name):
     except Exception as e:
         print(f"Failed to save parquet cache {parquet_path}: {e}")
 
-    _cache[key] = gdf
-    return gdf
+    return _cache_projection(key, gdf)
 
 
 def _to_projected(gdf):
+    # Retrieve pre-projected layer from cache if it matches the base layer
+    for key, cached_gdf in _cache.items():
+        if gdf is cached_gdf:
+            return _cache_proj.get(key, gdf.to_crs(PROJ_CRS))
     return gdf.to_crs(PROJ_CRS)
 
 
