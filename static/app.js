@@ -631,6 +631,15 @@
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
   }
 
+  let _scrollTimer = null;
+  function debouncedScrollToBottom() {
+    if (_scrollTimer) return;
+    _scrollTimer = requestAnimationFrame(() => {
+      _scrollTimer = null;
+      scrollToBottom();
+    });
+  }
+
   function scrollToBottom() {
     const container = $('#chatMessages');
     requestAnimationFrame(() => {
@@ -1213,6 +1222,7 @@
 
     let currentTextMsg = null;
     let accumulatedText = '';
+    let _renderTimer = null;
     let statusIndicator = null;
     let thinkingBubble = null;
 
@@ -1314,7 +1324,7 @@
                   thinkBody.textContent += event.content + '\n';
                   thinkBody.scrollTop = thinkBody.scrollHeight;
                 }
-                scrollToBottom();
+                debouncedScrollToBottom();
                 break;
 
               case 'tool_call': {
@@ -1337,7 +1347,7 @@
                 const argsStr = Object.entries(toolArgs).map(([k,v]) => `${k}: ${v}`).join(', ');
                 toolCard.innerHTML = `<span class="tool-icon"></span><span class="tool-name">${escapeHtml(toolName)}</span><span class="tool-args">${escapeHtml(argsStr)}</span>`;
                 $('#chatMessages').appendChild(toolCard);
-                scrollToBottom();
+                debouncedScrollToBottom();
                 setStatus(friendlyName, 'var(--warn)');
                 break;
               }
@@ -1369,12 +1379,17 @@
                   currentTextMsg = createStreamingMessage('text');
                 }
                 accumulatedText += event.content;
-                try {
-                  currentTextMsg.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText, { breaks: true, gfm: true }));
-                } catch {
-                  currentTextMsg.textContent = accumulatedText;
+                if (!_renderTimer) {
+                  _renderTimer = requestAnimationFrame(() => {
+                    _renderTimer = null;
+                    try {
+                      currentTextMsg.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText, { breaks: true, gfm: true }));
+                    } catch {
+                      currentTextMsg.textContent = accumulatedText;
+                    }
+                  });
                 }
-                scrollToBottom();
+                debouncedScrollToBottom();
                 break;
 
               case 'map_action': {

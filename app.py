@@ -2,6 +2,7 @@ import json
 import os
 import re
 import time
+import asyncio
 import traceback
 from pathlib import Path
 
@@ -34,8 +35,8 @@ if not API_KEY:
     print("WARNING: GEMINI_API_KEY not set. Gemini provider will be unavailable.")
 
 MODEL = "gemma-4-31b-it"
-MAX_TOOL_ITERATIONS = 10
-MAX_HISTORY_ENTRIES = 20
+MAX_TOOL_ITERATIONS = 5
+MAX_HISTORY_ENTRIES = 12
 MAX_MESSAGE_LENGTH = 4000
 
 # ── Enhanced System Prompt: Full AI Agent ─────────────────────────────────────
@@ -348,7 +349,7 @@ async def ollama_chat_stream(message: str, history: list):
         messages.append({"role": "user", "content": message})
 
         model_name = "qwen2.5-coder:7b"
-        async with httpx.AsyncClient(timeout=60.0) as http_client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=120.0, write=30.0, pool=10.0)) as http_client:
             try:
                 r_tags = await http_client.get("http://localhost:11434/api/tags")
                 if r_tags.status_code == 200:
@@ -369,7 +370,8 @@ async def ollama_chat_stream(message: str, history: list):
                 "messages": messages,
                 "stream": True,
                 "options": {
-                    "temperature": 0.3
+                    "temperature": 0.3,
+                    "num_ctx": 4096
                 }
             }
             
@@ -464,7 +466,7 @@ async def chat_stream(message: str, history: list, provider: str = "gemma-4-31b-
             last_err = None
             success = False
 
-            for attempt in range(3):
+            for attempt in range(2):
                 try:
                     response = client.models.generate_content_stream(
                         model=provider,
@@ -488,7 +490,7 @@ async def chat_stream(message: str, history: list, provider: str = "gemma-4-31b-
                     last_err_msg = f"{type(e).__name__}: {str(e)}"
                     if "429" in str(e) and "quota" in str(e).lower():
                         break
-                    time.sleep(1.5 * (attempt + 1))
+                    await asyncio.sleep(0.5 * (attempt + 1))
             
             if not success:
                 gemini_failed = True
