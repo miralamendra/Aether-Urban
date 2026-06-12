@@ -338,18 +338,31 @@ html { scrollbar-color: var(--red) var(--panel); scrollbar-width: thin; }
 
 .provider-select {
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
   color: var(--fg);
-  font-family: 'Fira Code', monospace;
-  font-size: 9px;
-  padding: 2px 4px;
-  border-radius: 4px;
+  font-family: 'Inter', 'Fira Code', monospace;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
   outline: none;
   cursor: pointer;
-  max-width: 95px;
+  max-width: 200px;
+  margin-right: auto;
+  transition: all 0.2s ease;
+  appearance: none; /* helps remove default browser styling where possible */
 }
 .provider-select:hover {
+  border-color: color-mix(in srgb, var(--fg) 30%, transparent);
+  background: color-mix(in srgb, var(--fg) 5%, var(--bg));
+}
+.provider-select:focus {
   border-color: var(--red);
+}
+.provider-select option {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-size: 11px;
+  padding: 8px;
 }
 
 
