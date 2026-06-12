@@ -513,6 +513,17 @@
     const currentZoom = map.getZoom();
     const mapBounds = map.getBounds();
 
+    // Performance: Avoid loading individual buildings when zoomed out to prevent browser freeze
+    if (layerName === 'building' && currentZoom < 15) {
+      if (activeLayers['building']) {
+        baseLayerGroup.removeLayer(activeLayers['building']);
+        delete activeLayers['building'];
+        updateLayerControls();
+      }
+      setStatus('Zoom in closer (Level 15+) to load buildings', 'var(--warn)');
+      return;
+    }
+
     // Determine if we need to fetch fresh simplified geometries from the server
     const needsFetch = forceReload ||
                        !loadedBounds[layerName] ||

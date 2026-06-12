@@ -599,7 +599,7 @@ async def get_layer_geojson(name: str, request: Request):
                 gdf_filtered = spatial_tools._filter_by_bbox(gdf, bbox)
                 
                 # Limit features to keep serialization fast and payload sizes small
-                max_features = 15000
+                max_features = 3000
                 if len(gdf_filtered) > max_features:
                     gdf_filtered = gdf_filtered.sample(n=max_features, random_state=42).copy()
                 
