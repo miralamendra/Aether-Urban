@@ -1380,12 +1380,14 @@
                 }
                 accumulatedText += event.content;
                 if (!_renderTimer) {
+                  const msgEl = currentTextMsg;
                   _renderTimer = requestAnimationFrame(() => {
                     _renderTimer = null;
+                    if (!msgEl) return;
                     try {
-                      currentTextMsg.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText, { breaks: true, gfm: true }));
+                      msgEl.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText, { breaks: true, gfm: true }));
                     } catch {
-                      currentTextMsg.textContent = accumulatedText;
+                      msgEl.textContent = accumulatedText;
                     }
                   });
                 }
@@ -1405,11 +1407,24 @@
 
               case 'done':
                 removeStatusIndicator();
+                // Flush any pending render so final text is visible
+                if (_renderTimer) {
+                  cancelAnimationFrame(_renderTimer);
+                  _renderTimer = null;
+                }
+                if (currentTextMsg && accumulatedText) {
+                  try {
+                    currentTextMsg.innerHTML = DOMPurify.sanitize(marked.parse(accumulatedText, { breaks: true, gfm: true }));
+                  } catch {
+                    currentTextMsg.textContent = accumulatedText;
+                  }
+                }
                 if (thinkingBubble) {
                   const pulse = thinkingBubble.querySelector('.thinking-pulse');
                   if (pulse) pulse.classList.add('done');
                   thinkingBubble = null;
                 }
+                scrollToBottom();
                 break;
             }
           } catch (e) {
