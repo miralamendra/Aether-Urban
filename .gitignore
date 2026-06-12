@@ -1,0 +1,17 @@
+# Environment variables containing API Keys
+.env
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Project caches (OSMnx cache responses)
+cache/
+
+# OS files
+.DS_Store
+Thumbs.db

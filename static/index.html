@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Aether-Urban: Self-hosted AI Geospatial Analysis & Network Workspace for Colombo urban planning">
+  <title>Aether-Urban | AI Geospatial Workspace</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e06c75' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M2 12h20'/><path d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/></svg>">
+</head>
+<body>
+  <!-- Loading overlay — hides all flashing until app is ready -->
+  <div id="app-loader" style="position:fixed;inset:0;z-index:99999;background:var(--bg,#282c34);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;transition:opacity .3s">
+    <div id="loader-wave" style="color:var(--brand-color,var(--red,#e06c75));font-family:monospace;font-size:11px;opacity:.5">▁▂▃</div>
+  </div>
+
+  <!-- Floating Hamburger button -->
+  <button class="hamburger-btn" id="hamburger-btn" title="Toggle sidebar">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+
+  <div class="app-layout">
+    <!-- Icon Rail (on the far left) -->
+    <div class="icon-rail" id="icon-rail">
+      <button class="icon-rail-btn rail-new-chat" id="rail-new-chat" title="New Chat">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="icon-rail-divider"></div>
+      <button class="icon-rail-btn active-section" id="rail-chats" title="Agent Chat">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </button>
+      <button class="icon-rail-btn" id="rail-layers" title="GIS Layers">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+      </button>
+      <button class="icon-rail-btn" id="rail-reset-view" title="Reset Map View">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+      </button>
+      <div style="flex:1"></div>
+      <button class="icon-rail-btn" id="rail-settings" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <!-- Collapsible Sidebar next to Icon Rail -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-resize-handle" id="sidebar-resize-handle"></div>
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <span class="sidebar-brand-title">Aether</span>
+        </div>
+        <button class="sidebar-new-chat" id="btnClearChat" title="New Chat">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+
+      <div class="sidebar-inner">
+        <!-- Chat Panel -->
+        <div class="sidebar-panel-content active" id="panel-chats-content">
+          <div class="section">
+            <div class="section-header">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <h4>Agent Console</h4>
+            </div>
+            <div class="sidebar-item active" id="btnActiveConsole">
+              <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+              <span class="sidebar-item-label">Active Conversation</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GIS Layers Panel -->
+        <div class="sidebar-panel-content hidden" id="panel-layers-content">
+          <div class="section" id="layersSection">
+            <div class="section-header" id="layersSectionToggle">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+              <h4>GIS Layers</h4>
+            </div>
+            <div class="section-items" id="layerItems">
+              <div class="sidebar-item" data-layer="building">
+                <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e06c75" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/></svg></span>
+                <span class="sidebar-item-label">Buildings (90,310)</span>
+              </div>
+              <div class="sidebar-item" data-layer="land_use">
+                <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#50fa7b" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+                <span class="sidebar-item-label">Land Use (13,819)</span>
+              </div>
+              <div class="sidebar-item" data-layer="zoning">
+                <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#61afef" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span>
+                <span class="sidebar-item-label">Zoning (3,871)</span>
+              </div>
+              <div class="sidebar-item" data-layer="road">
+                <span class="sidebar-item-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d19a66" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></span>
+                <span class="sidebar-item-label">Roads (2,761)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-status">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Ready</span>
+        </div>
+        <select id="providerSelect" class="provider-select" title="LLM Provider">
+          <option value="gemini">Gemma-4</option>
+          <option value="ollama">Ollama Local</option>
+        </select>
+        <button class="top-btn" id="btnResetView" title="Reset map">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="main-wrapper">
+      <div class="chat-top-bar">
+        <div class="chat-top-bar-left">
+          <button class="top-btn" id="btnLoadLayers" title="Load all GIS layers">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            Load Layers
+          </button>
+        </div>
+        <div class="chat-top-bar-center">Aether-Urban · Colombo Workspace</div>
+        <div class="chat-top-bar-right">
+          <button class="top-btn" id="btnExport" title="Export chat">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="chat-container" id="chatContainer">
+          <div class="quick-actions" id="quickActions">
+            <button class="quick-action-btn" data-prompt="Give me an overview of all available data layers"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Overview</button>
+            <button class="quick-action-btn" data-prompt="What is the land use composition of Colombo?"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 8a7 7 0 0 1-7.9 9.8z"/><path d="M9 22v-4h4"/></svg>Land Use</button>
+            <button class="quick-action-btn" data-prompt="Show zoning breakdown by category with areas"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>Zoning</button>
+            <button class="quick-action-btn" data-prompt="Analyze road network classification distribution"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 3.5-3.5V5h-3"/><path d="M18 8l3-3-3-3"/></svg>Roads</button>
+          </div>
+
+          <div class="chat-history" id="chatMessages">
+            <div class="welcome-screen" id="welcomeScreen">
+              <div class="welcome-name">Aether</div>
+              <div class="welcome-sub">Geospatial analysis assistant for Colombo urban planning. Ask about buildings, land use, zoning, and roads.</div>
+              <div class="welcome-prompts">
+                <div class="welcome-prompt" data-prompt="Give me a complete overview of all available data layers and their key statistics">
+                  <span class="prompt-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c678dd" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+                  Explore all data layers and statistics
+                </div>
+                <div class="welcome-prompt" data-prompt="Show me building types and their distribution across Colombo with a map view">
+                  <span class="prompt-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e06c75" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="22" x2="9" y2="16"/><line x1="15" y1="22" x2="15" y2="16"/><path d="M9 16h6"/><path d="M8 6h2"/><path d="M14 6h2"/><path d="M8 10h2"/><path d="M14 10h2"/></svg></span>
+                  Building type distribution analysis
+                </div>
+                <div class="welcome-prompt" data-prompt="What zones exist in the zoning layer and what area does each cover?">
+                  <span class="prompt-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#61afef" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></span>
+                  Zoning category breakdown
+                </div>
+                <div class="welcome-prompt" data-prompt="Analyze land use composition and show water bodies on the map">
+                  <span class="prompt-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#50fa7b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.6 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.6 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.6 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg></span>
+                  Land use composition and mapping
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-bar">
+            <div class="chat-input-top">
+              <textarea id="chatInput" placeholder="Ask about Colombo's urban landscape..." rows="1"></textarea>
+            </div>
+            <div class="chat-input-bottom">
+              <button class="stop-btn hidden" id="stopBtn" title="Stop generating">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+              </button>
+              <button class="send-btn" id="sendBtn" title="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="resize-handle" id="resizeHandle"></div>
+
+        <div class="map-panel" id="mapPanel">
+          <div class="map-container" id="mapContainer">
+            <div id="map"></div>
+            <div class="map-gis-controls" id="gisControls">
+              <button class="gis-btn" id="btnGIS3D" title="Toggle 3D Buildings"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="22" x2="9" y2="16"/><line x1="15" y1="22" x2="15" y2="16"/><path d="M9 16h6"/><path d="M8 6h2"/><path d="M14 6h2"/><path d="M8 10h2"/><path d="M14 10h2"/></svg>3D Buildings</button>
+              <button class="gis-btn" id="btnGISRoute" title="Find Shortest Path (Click 2 points)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 3.5-3.5V5h-3"/><path d="M18 8l3-3-3-3"/></svg>Route</button>
+              <button class="gis-btn" id="btnGISIsochrone" title="Generate Isochrone (Click point)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Isochrone</button>
+              <button class="gis-btn" id="btnGISClear" title="Clear GIS Layers"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>Clear Map</button>
+            </div>
+            <div class="map-overlay-info" id="mapOverlay">
+              <div><span class="label">Region</span></div>
+              <div><span class="value">Colombo, Sri Lanka</span></div>
+              <div><span class="label">CRS</span> <span class="value">EPSG:4326</span></div>
+              <div><span class="label">Features</span> <span class="value" id="featureCount">—</span></div>
+            </div>
+            <div class="map-layer-controls" id="layerControls"></div>
+            <div class="map-legend-overlay" id="mapLegend"></div>
+            <div class="isochrone-modal hidden" id="isochroneModal">
+              <div class="isochrone-modal-content">
+                <div class="isochrone-modal-title">Walking Isochrone</div>
+                <label for="isochroneMinutes">Walk time (minutes):</label>
+                <input type="number" id="isochroneMinutes" value="10" min="1" max="60" />
+                <div class="isochrone-modal-actions">
+                  <button id="isochroneCancel" class="iso-btn iso-cancel">Cancel</button>
+                  <button id="isochroneConfirm" class="iso-btn iso-confirm">Generate</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+  <script src="/static/app.js?v=3"></script>
+</body>
+</html>
