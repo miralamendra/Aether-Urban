@@ -490,6 +490,10 @@
         const data = await res.json();
         
         if (data.status === 'success' && data.geojson) {
+          cachedGeoJSON[name] = data.geojson;
+          loadedBounds[name] = bounds;
+          loadedZoom[name] = map.getZoom();
+
           const geoLayer = createStyledGeoJSON(data.geojson, name);
           activeLayers[name] = geoLayer;
           baseLayerGroup.addLayer(geoLayer);
@@ -656,7 +660,7 @@
     }
   }
 
-  function clearGisData() {
+  function clearGisData(clearStudyArea = false) {
     if (gisMarkers) gisMarkers.clearLayers();
     if (gisLayers) gisLayers.clearLayers();
     routeStart = null;
@@ -665,18 +669,32 @@
       map.removeLayer(activeRectangle);
       activeRectangle = null;
     }
-    studyAreaBounds = null;
     
-    try {
-      fetch(`${API_BASE}/api/study_area`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ bbox: null })
-      });
-    } catch (e) {
-      console.error('Failed to clear backend study area:', e);
+    if (clearStudyArea) {
+      studyAreaBounds = null;
+      
+      // Clear study area caches and base vector layers
+      baseLayerGroup.clearLayers();
+      activeLayers = {};
+      loadedBounds = {};
+      cachedGeoJSON = {};
+      loadedZoom = {};
+      
+      // Reset sidebar items to inactive state
+      $$('.sidebar-item[data-layer]').forEach(item => item.classList.remove('active'));
+      updateLayerControls();
+      
+      try {
+        fetch(`${API_BASE}/api/study_area`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ bbox: null })
+        });
+      } catch (e) {
+        console.error('Failed to clear backend study area:', e);
+      }
     }
   }
 
@@ -722,14 +740,14 @@
     }
 
     // Determine if we need to fetch fresh simplified geometries from the server
-    const needsFetch = forceReload ||
+    const needsFetch = !studyAreaBounds ? (forceReload ||
                        !loadedBounds[layerName] ||
                        loadedZoom[layerName] !== currentZoom ||
                        !loadedBounds[layerName].contains(mapBounds) ||
-                       !cachedGeoJSON[layerName];
+                       !cachedGeoJSON[layerName]) : (!cachedGeoJSON[layerName]);
 
     // Determine if we need to re-render the layer (either because we fetched new data, or styling constraints changed)
-    let needsRerender = needsFetch;
+    let needsRerender = needsFetch || !activeLayers[layerName];
     if (!needsFetch) {
       if (layerName === 'building') {
         const was3D = lastRendered3DState && (loadedZoom[layerName] >= 16);
@@ -747,9 +765,9 @@
     try {
       let geojson;
       if (needsFetch) {
-        // Cushion/Buffer bounds by 40% in each direction to preload adjacent features
-        const paddedBounds = mapBounds.pad(0.4);
-        const bbox = `${paddedBounds.getWest()},${paddedBounds.getSouth()},${paddedBounds.getEast()},${paddedBounds.getNorth()}`;
+        // If studyAreaBounds is active, fetch using studyAreaBounds, otherwise map bounds padded by 40%
+        const fetchBounds = studyAreaBounds || mapBounds.pad(0.4);
+        const bbox = `${fetchBounds.getWest()},${fetchBounds.getSouth()},${fetchBounds.getEast()},${fetchBounds.getNorth()}`;
         
         setStatus(`Loading ${layerName}...`, 'var(--warn)');
         const res = await fetch(`${API_BASE}/api/layer/${layerName}/geojson?bbox=${bbox}`);
@@ -1744,10 +1762,12 @@
         if (activeLayers[layerName]) {
           if (map.hasLayer(activeLayers[layerName])) {
             baseLayerGroup.removeLayer(activeLayers[layerName]);
-            delete activeLayers[layerName];
-            loadedBounds[layerName] = null; // Clear bounds cache when deactivated!
-            cachedGeoJSON[layerName] = null;
-            loadedZoom[layerName] = null;
+            if (!studyAreaBounds) {
+              delete activeLayers[layerName];
+              loadedBounds[layerName] = null;
+              cachedGeoJSON[layerName] = null;
+              loadedZoom[layerName] = null;
+            }
             item.classList.remove('active');
             updateLayerControls();
             showNotification(`Removed ${layerName} layer`, 'info');
@@ -1808,6 +1828,7 @@
           $$('.gis-btn').forEach(b => b.id !== 'btnGIS3D' && b.classList.remove('active'));
           btnSelectArea.classList.add('active');
           $('#map').style.cursor = 'crosshair';
+          clearGisData(true);
           showNotification('Click and drag on the map to select study area', 'info');
         }
       });
@@ -1852,7 +1873,7 @@
     const btnClear = $('#btnGISClear');
     if (btnClear) {
       btnClear.addEventListener('click', () => {
-        clearGisData();
+        clearGisData(true);
         activeGisTool = null;
         $$('.gis-btn').forEach(b => b.id !== 'btnGIS3D' && b.classList.remove('active'));
         $('#map').style.cursor = '';
