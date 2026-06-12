@@ -1309,7 +1309,7 @@
                       <span class="thinking-chevron">▶</span>
                       <span>Thinking...</span>
                     </div>
-                    <div class="thinking-body expanded" id="thinkingBody"></div>
+                    <div class="thinking-body expanded streaming" id="thinkingBody"></div>
                   `;
                   $('#chatMessages').appendChild(thinkingBubble);
                   thinkingBubble.querySelector('.thinking-toggle').addEventListener('click', () => {
@@ -1317,11 +1317,12 @@
                     const body = thinkingBubble.querySelector('.thinking-body');
                     toggle.classList.toggle('expanded');
                     body.classList.toggle('expanded');
+                    body.classList.remove('streaming');
                   });
                 }
                 const thinkBody = thinkingBubble.querySelector('.thinking-body');
                 if (thinkBody) {
-                  thinkBody.textContent += event.content + '\n';
+                  thinkBody.textContent += event.content;
                   thinkBody.scrollTop = thinkBody.scrollHeight;
                 }
                 debouncedScrollToBottom();
@@ -1340,7 +1341,10 @@
                   const toggle = thinkingBubble.querySelector('.thinking-toggle');
                   const body = thinkingBubble.querySelector('.thinking-body');
                   if (toggle) toggle.classList.remove('expanded');
-                  if (body) body.classList.remove('expanded');
+                  if (body) {
+                    body.classList.remove('expanded');
+                    body.classList.remove('streaming');
+                  }
                 }
                 const toolCard = document.createElement('div');
                 toolCard.className = 'tool-exec-card';
@@ -1372,7 +1376,10 @@
                   const toggle = thinkingBubble.querySelector('.thinking-toggle');
                   const body = thinkingBubble.querySelector('.thinking-body');
                   if (toggle) toggle.classList.remove('expanded');
-                  if (body) body.classList.remove('expanded');
+                  if (body) {
+                    body.classList.remove('expanded');
+                    body.classList.remove('streaming');
+                  }
                   thinkingBubble = null;
                 }
                 if (!currentTextMsg) {
@@ -1422,6 +1429,10 @@
                 if (thinkingBubble) {
                   const pulse = thinkingBubble.querySelector('.thinking-pulse');
                   if (pulse) pulse.classList.add('done');
+                  const body = thinkingBubble.querySelector('.thinking-body');
+                  if (body) {
+                    body.classList.remove('streaming');
+                  }
                   thinkingBubble = null;
                 }
                 scrollToBottom();

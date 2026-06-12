@@ -1553,7 +1553,6 @@ html { scrollbar-color: var(--red) var(--panel); scrollbar-width: thin; }
   white-space: pre-wrap;
   word-break: break-word;
 }
-
 .thinking-body.expanded {
   max-height: 400px;
   overflow-y: auto;
@@ -1561,6 +1560,14 @@ html { scrollbar-color: var(--red) var(--panel); scrollbar-width: thin; }
   margin-top: 4px;
 }
 
+.thinking-body.expanded.streaming {
+  max-height: 52px;
+  padding: 4px 10px;
+  overflow-y: hidden;
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.2) 20%, #000 75%, #000 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.2) 20%, #000 75%, #000 100%);
+  transition: none;
+}
 /* ── Tool Execution Card ── */
 .tool-exec-card {
   display: flex;
