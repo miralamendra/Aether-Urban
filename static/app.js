@@ -31,7 +31,7 @@
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
-  const dynamicLayers = ['building', 'land_use'];
+  const dynamicLayers = ['building', 'land_use', 'zoning', 'road'];
   let viewportLoadTimeout = null;
 
   function initMap() {
@@ -521,6 +521,17 @@
         updateLayerControls();
       }
       setStatus('Zoom in closer (Level 15+) to load buildings', 'var(--warn)');
+      return;
+    }
+
+    // Performance: Avoid loading roads when zoomed out to prevent browser freeze
+    if (layerName === 'road' && currentZoom < 13) {
+      if (activeLayers['road']) {
+        baseLayerGroup.removeLayer(activeLayers['road']);
+        delete activeLayers['road'];
+        updateLayerControls();
+      }
+      setStatus('Zoom in closer (Level 13+) to load roads', 'var(--warn)');
       return;
     }
 

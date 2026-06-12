@@ -15,3 +15,6 @@ cache/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Dataset backups
+data/*_backup.parquet

@@ -34,7 +34,7 @@ API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if not API_KEY:
     print("WARNING: GEMINI_API_KEY not set. Gemini provider will be unavailable.")
 
-MODEL = "gemma-4-31b-it"
+MODEL = "gemini-2.5-flash"
 MAX_TOOL_ITERATIONS = 5
 MAX_HISTORY_ENTRIES = 12
 MAX_MESSAGE_LENGTH = 4000
@@ -436,7 +436,7 @@ async def ollama_chat_stream(message: str, history: list):
         yield sse_event("done", "")
 
 
-async def chat_stream(message: str, history: list, provider: str = "gemma-4-31b-it"):
+async def chat_stream(message: str, history: list, provider: str = "gemini-2.5-flash"):
     # Sanitize inputs
     message, history = _sanitize_input(message, history)
 
@@ -603,7 +603,14 @@ async def get_layer_geojson(name: str, request: Request):
             if bbox:
                 gdf_filtered = spatial_tools._filter_by_bbox(gdf, bbox)
                 
-                # Limit features removed: rely on aggressive dynamic simplification instead
+                # Limit features to prevent browser crash/freeze
+                max_features_map = {
+                    "building": 1500,
+                    "land_use": 1500,
+                    "zoning": 1500,
+                    "road": 1500
+                }
+                max_feat = max_features_map.get(name, 1500)
                 
                 # Dynamic geometry simplification to optimize client-side rendering
                 try:
@@ -626,7 +633,7 @@ async def get_layer_geojson(name: str, request: Request):
                 except Exception as se:
                     print(f"Error simplifying geometries for layer {name}: {se}")
                 
-                geojson_str = spatial_tools._safe_geojson_str(gdf_filtered, max_features=None)
+                geojson_str = spatial_tools._safe_geojson_str(gdf_filtered, max_features=max_feat)
                 response_str = f'{{"status":"success","count":{len(gdf_filtered)},"geojson":{geojson_str}}}'
                 return Response(content=response_str, media_type="application/json")
             else:
@@ -644,7 +651,7 @@ async def get_layer_geojson(name: str, request: Request):
                 except Exception as se:
                     print(f"Error simplifying full layer {name}: {se}")
                 
-                geojson_str = spatial_tools._safe_geojson_str(gdf, max_features=None)
+                geojson_str = spatial_tools._safe_geojson_str(gdf, max_features=2000)
                 response_str = f'{{"status":"success","count":{len(gdf)},"geojson":{geojson_str}}}'
                 return Response(content=response_str, media_type="application/json")
     except Exception as e:
