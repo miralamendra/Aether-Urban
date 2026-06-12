@@ -8,6 +8,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from google import genai
@@ -119,6 +120,23 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
+
+# ── Performance: Enable Gzip compression for large GeoJSON responses ─────────
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# ── Performance: Pre-warm spatial data caches on container startup ──────────
+@app.on_event("startup")
+async def startup_event():
+    print("Pre-warming spatial data caches...")
+    try:
+        # Pre-load all data layers in memory
+        for layer in ["building", "land_use", "zoning", "road"]:
+            spatial_tools._load_layer(layer)
+        # Pre-load and project the walk graph
+        spatial_tools._load_walk_graph()
+        print("All spatial data caches successfully pre-warmed!")
+    except Exception as e:
+        print(f"Error during cache pre-warming: {e}")
 
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
@@ -608,6 +626,20 @@ async def get_layer_geojson(name: str, request: Request):
                 response_str = f'{{"status":"success","count":{len(gdf_filtered)},"geojson":{geojson_str}}}'
                 return Response(content=response_str, media_type="application/json")
             else:
+                # Performance: Simplify full layers to keep transmission size small
+                try:
+                    gdf_simplified = gdf.copy()
+                    # Apply a small simplification tolerance (approx 5m resolution)
+                    simplified = gdf_simplified.geometry.simplify(0.00005, preserve_topology=False)
+                    empty_mask = simplified.is_empty
+                    final_geom = simplified.copy()
+                    if empty_mask.any():
+                        final_geom[empty_mask] = gdf_simplified.geometry[empty_mask].envelope
+                    gdf_simplified["geometry"] = final_geom
+                    gdf = gdf_simplified
+                except Exception as se:
+                    print(f"Error simplifying full layer {name}: {se}")
+                
                 geojson_str = spatial_tools._safe_geojson_str(gdf, max_features=None)
                 response_str = f'{{"status":"success","count":{len(gdf)},"geojson":{geojson_str}}}'
                 return Response(content=response_str, media_type="application/json")
