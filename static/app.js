@@ -174,39 +174,39 @@
     if (!properties) return '#abb2bf';
     
     if (layerName === 'building') {
-      const use = (properties.main_use || '').toLowerCase();
+      const use = (properties.main_use || properties.MAIN_USE || properties.Main_Use || '').toLowerCase();
       if (use.includes('residen')) return '#e06c75';
-      if (use.includes('commerc') || use.includes('shop') || use.includes('bank')) return '#61afef';
+      if (use.includes('commerc') || use.includes('shop') || use.includes('bank') || use.includes('office') || use.includes('touris') || use.includes('hotel')) return '#61afef';
       if (use.includes('educat') || use.includes('school') || use.includes('univers')) return '#e5c07b';
       if (use.includes('relig') || use.includes('templ') || use.includes('church') || use.includes('mosqu')) return '#c678dd';
-      if (use.includes('indust') || use.includes('factor')) return '#d19a66';
-      if (use.includes('instit') || use.includes('gov')) return '#56b6c2';
-      return '#888';
+      if (use.includes('indust') || use.includes('factor') || use.includes('warehous')) return '#d19a66';
+      if (use.includes('instit') || use.includes('gov') || use.includes('health') || use.includes('medic') || use.includes('hospit') || use.includes('defence') || use.includes('cultur')) return '#56b6c2';
+      return '#888888';
     }
     
     if (layerName === 'land_use') {
-      const desc = (properties.discriptio || properties.descriptio || '').toLowerCase();
+      const desc = (properties.discriptio || properties.DISCRIPTIO || properties.descriptio || properties.DESCRIPTIO || '').toLowerCase();
       if (desc.includes('residen')) return '#e06c75';
-      if (desc.includes('commerc') || desc.includes('bank')) return '#61afef';
-      if (desc.includes('open') || desc.includes('park') || desc.includes('play') || desc.includes('beach')) return '#50fa7b';
+      if (desc.includes('commerc') || desc.includes('bank') || desc.includes('office')) return '#61afef';
+      if (desc.includes('open') || desc.includes('park') || desc.includes('play') || desc.includes('beach') || desc.includes('recreat')) return '#50fa7b';
       if (desc.includes('water') || desc.includes('canal') || desc.includes('river') || desc.includes('lake')) return '#56b6c2';
       if (desc.includes('indust')) return '#d19a66';
       if (desc.includes('road') || desc.includes('rail') || desc.includes('transport')) return '#abb2bf';
-      return '#888';
+      return '#888888';
     }
     
     if (layerName === 'zoning') {
-      const zone = (properties.zone || '').toLowerCase();
+      const zone = (properties.zone || properties.ZONE || '').toLowerCase();
       if (zone.includes('residen')) return '#e06c75';
       if (zone.includes('commerc') || zone.includes('business')) return '#61afef';
       if (zone.includes('mixed')) return '#c678dd';
       if (zone.includes('indust')) return '#d19a66';
       if (zone.includes('open') || zone.includes('recreat')) return '#50fa7b';
-      return '#888';
+      return '#888888';
     }
     
     if (layerName === 'road') {
-      const cls = (properties.road_class || '').toLowerCase();
+      const cls = (properties.road_class || properties.ROAD_CLASS || '').toLowerCase();
       if (cls === 'primary' || cls === 'motorway' || cls === 'trunk' || cls.includes('class a') || cls === 'a') return '#ff4444';
       if (cls === 'secondary' || cls === 'tertiary' || cls.includes('class b') || cls === 'b') return '#ffad44';
       return '#abb2bf';
@@ -216,12 +216,12 @@
   }
 
   function getBuildingHeight(properties) {
-    const use = (properties.main_use || '').toLowerCase();
-    const area = properties['st_area(sh'] || properties.area || 100;
-    if (use.includes('commerc') || use.includes('shop') || use.includes('bank')) return 25 + Math.min(30, area / 20);
-    if (use.includes('indust') || use.includes('factory')) return 15 + Math.min(15, area / 50);
-    if (use.includes('educat') || use.includes('school')) return 12 + Math.min(10, area / 50);
-    if (use.includes('instit') || use.includes('gov')) return 18 + Math.min(20, area / 30);
+    const use = (properties.main_use || properties.MAIN_USE || properties.Main_Use || '').toLowerCase();
+    const area = properties['st_area(sh'] || properties['ST_AREA(SH'] || properties.area || properties.AREA || 100;
+    if (use.includes('commerc') || use.includes('shop') || use.includes('bank') || use.includes('office') || use.includes('touris') || use.includes('hotel')) return 25 + Math.min(30, area / 20);
+    if (use.includes('indust') || use.includes('factory') || use.includes('warehous')) return 15 + Math.min(15, area / 50);
+    if (use.includes('educat') || use.includes('school') || use.includes('univers')) return 12 + Math.min(10, area / 50);
+    if (use.includes('instit') || use.includes('gov') || use.includes('health') || use.includes('medic') || use.includes('hospit') || use.includes('defence') || use.includes('cultur')) return 18 + Math.min(20, area / 30);
     return 8 + Math.min(10, area / 100);
   }
 
@@ -360,7 +360,7 @@
         const options = {};
         if (gt === 'LineString' || gt === 'MultiLineString') {
           const zoom = map ? map.getZoom() : 13;
-          const cls = (feature.properties && feature.properties.road_class || '').toLowerCase();
+          const cls = (feature.properties && (feature.properties.road_class || feature.properties.ROAD_CLASS) || '').toLowerCase();
           let baseWeight = (cls.includes('class a') || cls === 'a') ? 4 : (cls.includes('class b') || cls === 'b') ? 3 : 2;
           let weight = baseWeight;
           if (zoom >= 16) {
@@ -379,10 +379,10 @@
           options.opacity = 0.75;
         } else {
           options.fillColor = color;
-          options.fillOpacity = 0.35;
-          options.color = color;
-          options.weight = 1;
-          options.opacity = 0.6;
+          options.fillOpacity = (layerName === 'building') ? 0.8 : 0.45;
+          options.color = colorMix(color, '#000000', 0.15);
+          options.weight = 0.8;
+          options.opacity = 0.9;
         }
         return options;
       },
@@ -397,10 +397,10 @@
           options.opacity = 0.75;
         } else {
           options.fillColor = color;
-          options.fillOpacity = 0.35;
-          options.color = color;
-          options.weight = 1;
-          options.opacity = 0.6;
+          options.fillOpacity = (layerName === 'building') ? 0.8 : 0.45;
+          options.color = colorMix(color, '#000000', 0.15);
+          options.weight = 0.8;
+          options.opacity = 0.9;
         }
         layer.options.originalStyle = options;
         bindPopupToLayer(layer, feature, layerName);
