@@ -37,7 +37,7 @@
   function initMap() {
     map = L.map('map', {
       center: [6.92, 79.865],
-      zoom: 13,
+      zoom: 15,
       zoomControl: true,
       attributionControl: true,
       preferCanvas: true
@@ -143,8 +143,8 @@
     
     if (layerName === 'road') {
       const cls = (properties.road_class || '').toLowerCase();
-      if (cls.includes('class a') || cls === 'a') return '#ff4444';
-      if (cls.includes('class b') || cls === 'b') return '#ffad44';
+      if (cls === 'primary' || cls === 'motorway' || cls === 'trunk' || cls.includes('class a') || cls === 'a') return '#ff4444';
+      if (cls === 'secondary' || cls === 'tertiary' || cls.includes('class b') || cls === 'b') return '#ffad44';
       return '#abb2bf';
     }
     
@@ -1175,8 +1175,8 @@
       road: {
         title: 'Roads',
         items: [
-          { color: '#ff4444', label: 'Class A (Primary)' },
-          { color: '#ffad44', label: 'Class B (Secondary)' },
+          { color: '#ff4444', label: 'Primary (Class A / Motorway / Trunk)' },
+          { color: '#ffad44', label: 'Secondary / Tertiary (Class B)' },
           { color: '#abb2bf', label: 'Local / Other' }
         ]
       }
@@ -1855,7 +1855,7 @@
             $('#featureCount').textContent = totalFeatures.toLocaleString();
           }
           if (data.data.center && Array.isArray(data.data.center)) {
-            map.setView(data.data.center, 13);
+            map.setView(data.data.center, 15);
           }
         }
         // Load default layers (building and road) on startup

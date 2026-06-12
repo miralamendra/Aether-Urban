@@ -772,7 +772,7 @@ def get_overview() -> dict:
         ma = {
             "map_action": "PAN_AND_ZOOM",
             "target_center": [center_lat, center_lon],
-            "zoom_level": 13,
+            "zoom_level": 15,
             "highlight_geometries": {
                 "layer": "overview",
                 "bounding_box": _bounds_to_bbox(global_bounds) if global_bounds else [],
