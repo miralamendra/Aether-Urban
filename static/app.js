@@ -24,6 +24,11 @@
   let lastRendered3DState = false;
   let studyAreaBounds = null;
   let activeRectangle = null;
+  let mapPitch = 0;
+  let mapBearing = 0;
+  let isDraggingCamera = false;
+  let lastCameraX = 0;
+  let lastCameraY = 0;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -35,6 +40,18 @@
 
   const dynamicLayers = ['building', 'land_use', 'zoning', 'road'];
   let viewportLoadTimeout = null;
+
+  function updateCameraTransform() {
+    const paneEl = document.querySelector('#map .leaflet-map-pane');
+    if (!paneEl) return;
+    if (enable3DBuildings) {
+      paneEl.style.transform = `rotateX(${mapPitch}deg) rotateZ(${mapBearing}deg)`;
+      paneEl.style.transition = 'none';
+    } else {
+      paneEl.style.transform = '';
+      paneEl.style.transition = 'transform 0.5s ease';
+    }
+  }
 
   function initMap() {
     map = L.map('map', {
@@ -109,6 +126,46 @@
         map.closePopup();
       }
     });
+
+    const mapContainer = $('.map-container');
+    if (mapContainer) {
+      mapContainer.addEventListener('mousedown', (e) => {
+        if (!enable3DBuildings) return;
+        if (e.button === 2 || (e.button === 0 && e.shiftKey)) {
+          isDraggingCamera = true;
+          lastCameraX = e.clientX;
+          lastCameraY = e.clientY;
+          map.dragging.disable();
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDraggingCamera || !enable3DBuildings) return;
+        const deltaX = e.clientX - lastCameraX;
+        const deltaY = e.clientY - lastCameraY;
+        lastCameraX = e.clientX;
+        lastCameraY = e.clientY;
+
+        mapBearing += deltaX * 0.4;
+        mapPitch = Math.max(0, Math.min(75, mapPitch - deltaY * 0.4));
+        updateCameraTransform();
+      });
+
+      window.addEventListener('mouseup', (e) => {
+        if (isDraggingCamera) {
+          isDraggingCamera = false;
+          map.dragging.enable();
+        }
+      });
+
+      mapContainer.addEventListener('contextmenu', (e) => {
+        if (enable3DBuildings) {
+          e.preventDefault();
+        }
+      });
+    }
 
     setTimeout(() => map.invalidateSize(), 300);
   }
@@ -404,6 +461,18 @@
     const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
     setStatus('Loading Study Area...', 'var(--warn)');
     
+    try {
+      await fetch(`${API_BASE}/api/study_area`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ bbox: bbox })
+      });
+    } catch (e) {
+      console.error('Failed to set backend study area:', e);
+    }
+    
     // Clear all existing layer groups from map
     baseLayerGroup.clearLayers();
     activeLayers = {};
@@ -597,6 +666,18 @@
       activeRectangle = null;
     }
     studyAreaBounds = null;
+    
+    try {
+      fetch(`${API_BASE}/api/study_area`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ bbox: null })
+      });
+    } catch (e) {
+      console.error('Failed to clear backend study area:', e);
+    }
   }
 
   function onMapViewportChange() {
@@ -1690,6 +1771,10 @@
         showNotification(enable3DBuildings ? '3D Buildings Extrusion Enabled' : '3D Buildings Extrusion Disabled', 'info');
         
         if (enable3DBuildings) {
+          mapPitch = 55;
+          mapBearing = -30;
+          updateCameraTransform();
+          
           if (!activeLayers['building']) {
             loadLayerToMap('building');
           } else {
@@ -1700,6 +1785,10 @@
             showNotification('Zoomed in to level 16 to render 3D structures', 'info');
           }
         } else {
+          mapPitch = 0;
+          mapBearing = 0;
+          updateCameraTransform();
+          
           if (activeLayers['building']) {
             loadLayerViewport('building');
           }

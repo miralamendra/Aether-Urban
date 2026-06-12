@@ -93,6 +93,19 @@ To call tools, output a JSON list inside a single ```tool block:
 
 After receiving results, provide an insightful markdown-formatted analysis. Use tables, bullet points, and bold text for clarity. Always reference specific numbers from the data."""
 
+
+def get_dynamic_system_prompt() -> str:
+    prompt = SYSTEM_PROMPT
+    active_area = getattr(spatial_tools, "ACTIVE_STUDY_AREA", None)
+    if active_area:
+        prompt += f"\n\nCURRENT ACTIVE STUDY AREA:\n- The user has selected a study area with bounding box (min_lon, min_lat, max_lon, max_lat): {active_area}."
+        prompt += "\n- All spatial queries/tools you execute will automatically be clipped/filtered to this active study area."
+        prompt += "\n- Please tailor your analysis, counts, and recommendations specifically to this selected study area. If the user asks about the selected area, you are analyzing this bounding box."
+    else:
+        prompt += "\n\nCURRENT ACTIVE STUDY AREA:\n- No study area is currently selected. Queries will run on the entire Colombo datasets."
+    return prompt
+
+
 TOOL_REGISTRY = {
     "get_overview": spatial_tools.get_overview,
     "get_layer_summary": spatial_tools.get_layer_summary,
@@ -343,7 +356,7 @@ def flush_stream_parser(state: StreamParserState):
 
 async def ollama_chat_stream(message: str, history: list):
     try:
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages = [{"role": "system", "content": get_dynamic_system_prompt()}]
         for entry in history:
             role = "user" if entry["role"] == "user" else "assistant"
             messages.append({"role": role, "content": entry["content"]})
@@ -454,7 +467,7 @@ async def chat_stream(message: str, history: list, provider: str = "gemini-2.5-f
     try:
         contents = build_contents(message, history)
         config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=get_dynamic_system_prompt(),
             temperature=0.3,
         )
 
@@ -594,6 +607,23 @@ async def chat_endpoint(request: Request):
             "Content-Encoding": "identity",
         },
     )
+
+
+@app.get("/api/study_area")
+async def get_study_area():
+    return {"status": "success", "study_area": getattr(spatial_tools, "ACTIVE_STUDY_AREA", None)}
+
+
+@app.post("/api/study_area")
+async def set_study_area(request: Request):
+    try:
+        body = await request.json()
+        bbox = body.get("bbox")
+        spatial_tools.ACTIVE_STUDY_AREA = bbox
+        return {"status": "success", "study_area": bbox}
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse({"status": "error", "message": f"Failed to set study area: {str(e)}"}, status_code=500)
 
 
 @app.get("/api/layers")

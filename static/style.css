@@ -961,9 +961,20 @@ html { scrollbar-color: var(--red) var(--panel); scrollbar-width: thin; }
   flex: 1;
   position: relative;
   min-height: 200px;
+  perspective: 1200px;
+  overflow: hidden;
 }
 
-#map { width: 100%; height: 100%; background: var(--bg); }
+#map { 
+  width: 100%; 
+  height: 100%; 
+  background: var(--bg);
+  transform-style: preserve-3d;
+}
+
+#map .leaflet-map-pane {
+  transform-style: preserve-3d;
+}
 
 .map-overlay-info {
   position: absolute;

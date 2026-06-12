@@ -32,6 +32,8 @@ MAX_GEOJSON_FEATURES = 200000
 # Colombo bounding box for coordinate validation
 _COLOMBO_BOUNDS = {"min_lat": 6.0, "max_lat": 8.0, "min_lon": 79.0, "max_lon": 81.0}
 
+ACTIVE_STUDY_AREA = None
+
 
 def _validate_layer_name(name):
     key = name.lower().strip() if isinstance(name, str) else ""
@@ -118,6 +120,13 @@ def _load_layer(name):
         print(f"Failed to save parquet cache {parquet_path}: {e}")
 
     return _cache_projection(key, gdf)
+
+
+def _get_active_layer(name):
+    gdf = _load_layer(name)
+    if ACTIVE_STUDY_AREA:
+        return _filter_by_bbox(gdf, ACTIVE_STUDY_AREA)
+    return gdf
 
 
 def _to_projected(gdf):
@@ -236,7 +245,7 @@ def _make_map_action(gdf, layer_name="result", filter_attr=None, filter_val=None
 
 def get_layer_summary(layer_name: str) -> dict:
     try:
-        gdf = _load_layer(layer_name)
+        gdf = _get_active_layer(layer_name)
         gdf_proj = _to_projected(gdf)
         cols = [c for c in gdf.columns if c != "geometry"]
         cat_cols = gdf[cols].select_dtypes(include=["object"]).columns.tolist()
@@ -269,7 +278,7 @@ def get_layer_summary(layer_name: str) -> dict:
 
 def get_layer_columns(layer_name: str) -> dict:
     try:
-        gdf = _load_layer(layer_name)
+        gdf = _get_active_layer(layer_name)
         col_info = {c: str(gdf[c].dtype) for c in gdf.columns}
         return {
             "status": "success",
@@ -282,7 +291,7 @@ def get_layer_columns(layer_name: str) -> dict:
 
 def get_unique_values(layer_name: str, column_name: str) -> dict:
     try:
-        gdf = _load_layer(layer_name)
+        gdf = _get_active_layer(layer_name)
         if column_name not in gdf.columns:
             return {
                 "status": "error",
@@ -302,7 +311,7 @@ def get_unique_values(layer_name: str, column_name: str) -> dict:
 
 def filter_features(layer_name: str, attribute: str, value: str) -> dict:
     try:
-        gdf = _load_layer(layer_name)
+        gdf = _get_active_layer(layer_name)
         if attribute not in gdf.columns:
             return {
                 "status": "error",
@@ -347,7 +356,7 @@ def filter_features(layer_name: str, attribute: str, value: str) -> dict:
 
 def calculate_area_by_category(layer_name: str, category_column: str) -> dict:
     try:
-        gdf = _load_layer(layer_name)
+        gdf = _get_active_layer(layer_name)
         if category_column not in gdf.columns:
             return {
                 "status": "error",
@@ -379,7 +388,7 @@ def calculate_area_by_category(layer_name: str, category_column: str) -> dict:
 
 def proximity_analysis(layer_name: str, attribute: str, value: str, buffer_meters: float = 500) -> dict:
     try:
-        gdf = _load_layer(layer_name)
+        gdf = _get_active_layer(layer_name)
         if attribute not in gdf.columns:
             return {
                 "status": "error",
@@ -432,8 +441,8 @@ def proximity_analysis(layer_name: str, attribute: str, value: str, buffer_meter
 
 def spatial_intersection(layer1_name: str, layer2_name: str, filter_attr: str = None, filter_val: str = None) -> dict:
     try:
-        gdf1 = _load_layer(layer1_name)
-        gdf2 = _load_layer(layer2_name)
+        gdf1 = _get_active_layer(layer1_name)
+        gdf2 = _get_active_layer(layer2_name)
         if filter_attr and filter_val:
             if filter_attr not in gdf1.columns:
                 return {
@@ -518,7 +527,7 @@ def _load_walk_graph():
 def nearest_features(layer_name: str, lat: float, lon: float, n: int = 5) -> dict:
     try:
         from pyproj import Transformer
-        gdf = _load_layer(layer_name)
+        gdf = _get_active_layer(layer_name)
         gdf_proj = _to_projected(gdf)
 
         # Project point directly with Transformer — avoids creating a GeoDataFrame
@@ -675,7 +684,7 @@ def get_walking_route(start_lat: float, start_lon: float, end_lat: float, end_lo
 
 def zoning_compliance_check(lat: float, lon: float, proposed_use: str) -> dict:
     try:
-        zoning = _load_layer("zoning")
+        zoning = _get_active_layer("zoning")
         point = Point(lon, lat)
         point_gdf = gpd.GeoDataFrame(geometry=[point], crs=SRC_CRS)
         joined = gpd.sjoin(point_gdf, zoning, how="left", predicate="within")
@@ -744,7 +753,7 @@ def get_overview() -> dict:
         all_bounds = []
         for name in LAYER_MAP:
             try:
-                gdf = _load_layer(name)
+                gdf = _get_active_layer(name)
                 bounds = gdf.total_bounds.tolist()
                 all_bounds.append(bounds)
                 overview[name] = {
