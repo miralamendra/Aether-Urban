@@ -105,22 +105,6 @@
           <div class="status-dot" id="statusDot"></div>
           <span id="statusText">Ready</span>
         </div>
-        <select id="providerSelect" class="provider-select" title="LLM Provider">
-          <optgroup label="Local Models">
-            <option value="ollama">Ollama Local</option>
-          </optgroup>
-          <optgroup label="Active Models">
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-            <option value="gemma-4-31b-it" selected>Gemma 4 31B</option>
-            <option value="gemma-4-26b-a4b-it">Gemma 4 26B (MoE)</option>
-          </optgroup>
-          <optgroup label="Backup Models">
-            <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-            <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
-            <option value="gemini-3-flash">Gemini 3 Flash</option>
-            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-          </optgroup>
-        </select>
         <button class="top-btn" id="btnResetView" title="Reset map">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
         </button>
@@ -182,6 +166,22 @@
               <textarea id="chatInput" placeholder="Say 'Hi' to see what I can do for you..." rows="1"></textarea>
             </div>
             <div class="chat-input-bottom">
+              <select id="providerSelect" class="provider-select" style="margin-right: auto; max-width: 160px; background: transparent; border-color: color-mix(in srgb, var(--fg) 10%, transparent);" title="LLM Provider">
+                <optgroup label="Local Models">
+                  <option value="ollama">Ollama Local</option>
+                </optgroup>
+                <optgroup label="Active Models">
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gemma-4-31b-it" selected>Gemma 4 31B</option>
+                  <option value="gemma-4-26b-a4b-it">Gemma 4 26B (MoE)</option>
+                </optgroup>
+                <optgroup label="Backup Models">
+                  <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                  <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite</option>
+                  <option value="gemini-3-flash">Gemini 3 Flash</option>
+                  <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+                </optgroup>
+              </select>
               <button class="stop-btn hidden" id="stopBtn" title="Stop generating">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
               </button>
