@@ -284,6 +284,11 @@
     }
 
     const geoLayer = L.geoJSON(geojson, {
+      filter: (feature) => {
+        // Discard any Point geometries to prevent Leaflet from rendering default blue markers
+        const gt = feature.geometry ? feature.geometry.type : '';
+        return gt !== 'Point' && gt !== 'MultiPoint';
+      },
       style: (feature) => {
         const color = getFeatureColor(layerName, feature.properties);
         const geom = feature.geometry;
@@ -514,13 +519,13 @@
     const mapBounds = map.getBounds();
 
     // Performance: Avoid loading individual buildings when zoomed out to prevent browser freeze
-    if (layerName === 'building' && currentZoom < 15) {
+    if (layerName === 'building' && currentZoom < 16) {
       if (activeLayers['building']) {
         baseLayerGroup.removeLayer(activeLayers['building']);
         delete activeLayers['building'];
         updateLayerControls();
       }
-      setStatus('Zoom in closer (Level 15+) to load buildings', 'var(--warn)');
+      setStatus('Zoom in closer (Level 16+) to load buildings', 'var(--warn)');
       return;
     }
 

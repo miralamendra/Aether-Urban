@@ -627,7 +627,7 @@ async def get_layer_geojson(name: str, request: Request):
                 
                 # Limit features to prevent browser crash/freeze
                 max_features_map = {
-                    "building": 1500,
+                    "building": 5000,
                     "land_use": 1500,
                     "zoning": 1500,
                     "road": 1500
@@ -645,13 +645,9 @@ async def get_layer_geojson(name: str, request: Request):
                     tolerance = span / 1500.0
                     if tolerance > 0.000002:
                         gdf_filtered = gdf_filtered.copy()
-                        simplified = gdf_filtered.geometry.simplify(tolerance, preserve_topology=False)
-                        empty_mask = simplified.is_empty
-                        final_geom = simplified.copy()
-                        if empty_mask.any():
-                            # Convert sub-pixel geometries to centroids instead of envelopes for max performance
-                            final_geom[empty_mask] = gdf_filtered.geometry[empty_mask].centroid
-                        gdf_filtered["geometry"] = final_geom
+                        gdf_filtered["geometry"] = gdf_filtered.geometry.simplify(tolerance, preserve_topology=False)
+                        # Drop geometries that became empty after simplification instead of converting to Point centroids
+                        gdf_filtered = gdf_filtered[~gdf_filtered.geometry.is_empty].copy()
                 except Exception as se:
                     print(f"Error simplifying geometries for layer {name}: {se}")
                 
@@ -663,12 +659,9 @@ async def get_layer_geojson(name: str, request: Request):
                 try:
                     gdf_simplified = gdf.copy()
                     # Apply a small simplification tolerance (approx 5m resolution)
-                    simplified = gdf_simplified.geometry.simplify(0.00005, preserve_topology=False)
-                    empty_mask = simplified.is_empty
-                    final_geom = simplified.copy()
-                    if empty_mask.any():
-                        final_geom[empty_mask] = gdf_simplified.geometry[empty_mask].centroid
-                    gdf_simplified["geometry"] = final_geom
+                    gdf_simplified["geometry"] = gdf_simplified.geometry.simplify(0.00005, preserve_topology=False)
+                    # Drop geometries that became empty after simplification
+                    gdf_simplified = gdf_simplified[~gdf_simplified.geometry.is_empty].copy()
                     gdf = gdf_simplified
                 except Exception as se:
                     print(f"Error simplifying full layer {name}: {se}")
