@@ -22,6 +22,8 @@
   let cachedGeoJSON = {};
   let loadedZoom = {};
   let lastRendered3DState = false;
+  let studyAreaBounds = null;
+  let activeRectangle = null;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -63,8 +65,8 @@
       maxNativeZoom: 19
     });
 
-    // Default is CartoDB Dark Matter tile layer
-    darkTile.addTo(map);
+    // Default is Esri Satellite Imagery tile layer
+    satelliteTile.addTo(map);
 
     const baseMaps = {
       "OpenStreetMap Standard": osmTile,
@@ -101,6 +103,7 @@
     });
 
     map.on('click', onMapClick);
+    map.on('mousedown', onMapMouseDown);
     map.on('popupopen', () => {
       if (activeGisTool) {
         map.closePopup();
@@ -350,6 +353,91 @@
     return geoLayer;
   }
 
+  let startLatLng = null;
+
+  function onMapMouseDown(e) {
+    if (activeGisTool === 'select_area') {
+      L.DomEvent.stopPropagation(e);
+      map.dragging.disable();
+      startLatLng = e.latlng;
+      if (activeRectangle) {
+        map.removeLayer(activeRectangle);
+      }
+      activeRectangle = L.rectangle([startLatLng, startLatLng], {
+        color: '#ff4444',
+        weight: 2,
+        fillColor: '#ff4444',
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      map.on('mousemove', onMapMouseMove);
+      map.on('mouseup', onMapMouseUp);
+    }
+  }
+
+  function onMapMouseMove(e) {
+    if (activeRectangle && startLatLng) {
+      activeRectangle.setBounds(L.latLngBounds(startLatLng, e.latlng));
+    }
+  }
+
+  function onMapMouseUp(e) {
+    map.off('mousemove', onMapMouseMove);
+    map.off('mouseup', onMapMouseUp);
+    map.dragging.enable();
+
+    if (activeRectangle) {
+      studyAreaBounds = activeRectangle.getBounds();
+      showNotification('Study Area Selected! Loading clipped layers...', 'info');
+      loadStudyAreaLayers(studyAreaBounds);
+      
+      activeGisTool = null;
+      const btnSelect = $('#btnGISSelectArea');
+      if (btnSelect) btnSelect.classList.remove('active');
+      $('#map').style.cursor = '';
+    }
+  }
+
+  async function loadStudyAreaLayers(bounds) {
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    setStatus('Loading Study Area...', 'var(--warn)');
+    
+    // Clear all existing layer groups from map
+    baseLayerGroup.clearLayers();
+    activeLayers = {};
+    loadedBounds = {};
+    cachedGeoJSON = {};
+    loadedZoom = {};
+
+    const layersToLoad = ['building', 'road', 'land_use', 'zoning'];
+    
+    for (const name of layersToLoad) {
+      try {
+        setStatus(`Loading ${name}...`, 'var(--warn)');
+        const res = await fetch(`${API_BASE}/api/layer/${name}/geojson?bbox=${bbox}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        
+        if (data.status === 'success' && data.geojson) {
+          const geoLayer = createStyledGeoJSON(data.geojson, name);
+          activeLayers[name] = geoLayer;
+          baseLayerGroup.addLayer(geoLayer);
+          
+          const sidebarItem = document.querySelector(`.sidebar-item[data-layer="${name}"]`);
+          if (sidebarItem) sidebarItem.classList.add('active');
+        }
+      } catch (e) {
+        showNotification(`Failed to load ${name}: ${e.message}`, 'error');
+      }
+    }
+    
+    updateLayerControls();
+    map.fitBounds(bounds, { padding: [20, 20] });
+    
+    setStatus('Ready', 'var(--green)');
+    showNotification('Study area layers loaded successfully!', 'success');
+  }
+
   function onMapClick(e) {
     if (activeGisTool === 'route') {
       if (!routeStart) {
@@ -502,10 +590,16 @@
     if (gisLayers) gisLayers.clearLayers();
     routeStart = null;
     routeEnd = null;
+    if (activeRectangle) {
+      map.removeLayer(activeRectangle);
+      activeRectangle = null;
+    }
+    studyAreaBounds = null;
   }
 
   function onMapViewportChange() {
     if (!map) return;
+    if (studyAreaBounds) return; // Do not dynamically load other viewports if study area is locked!
     clearTimeout(viewportLoadTimeout);
     viewportLoadTimeout = setTimeout(() => {
       Object.keys(activeLayers).forEach(layerName => {
@@ -1611,6 +1705,23 @@
       });
     }
 
+    const btnSelectArea = $('#btnGISSelectArea');
+    if (btnSelectArea) {
+      btnSelectArea.addEventListener('click', () => {
+        if (activeGisTool === 'select_area') {
+          activeGisTool = null;
+          btnSelectArea.classList.remove('active');
+          $('#map').style.cursor = '';
+        } else {
+          activeGisTool = 'select_area';
+          $$('.gis-btn').forEach(b => b.id !== 'btnGIS3D' && b.classList.remove('active'));
+          btnSelectArea.classList.add('active');
+          $('#map').style.cursor = 'crosshair';
+          showNotification('Click and drag on the map to select study area', 'info');
+        }
+      });
+    }
+
     const btnRoute = $('#btnGISRoute');
     if (btnRoute) {
       btnRoute.addEventListener('click', () => {
@@ -1867,15 +1978,8 @@
             map.setView(data.data.center, 20);
           }
         }
-        // Load default layers (building and road) on startup
-        await loadLayerToMap('building');
-        await loadLayerToMap('road');
       })
-      .catch(async () => {
-        // Fallback if layers api fails
-        await loadLayerToMap('building');
-        await loadLayerToMap('road');
-      });
+      .catch(() => {});
   }
 
   if (document.readyState === 'loading') {
