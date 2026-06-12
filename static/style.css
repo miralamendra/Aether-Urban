@@ -337,31 +337,37 @@ html { scrollbar-color: var(--red) var(--panel); scrollbar-width: thin; }
 }
 
 .provider-select {
-  background: var(--bg);
-  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
-  color: var(--fg);
+  background: transparent;
+  border: 1px solid transparent;
+  color: color-mix(in srgb, var(--fg) 70%, transparent);
   font-family: 'Inter', 'Fira Code', monospace;
   font-size: 11px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 6px;
   outline: none;
   cursor: pointer;
-  max-width: 200px;
+  max-width: 140px;
   margin-right: auto;
   transition: all 0.2s ease;
-  appearance: none; /* helps remove default browser styling where possible */
+  appearance: none;
+  color-scheme: dark; /* Forces native dark dropdown on Windows/Mac */
+  flex-shrink: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .provider-select:hover {
-  border-color: color-mix(in srgb, var(--fg) 30%, transparent);
-  background: color-mix(in srgb, var(--fg) 5%, var(--bg));
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--fg);
 }
 .provider-select:focus {
-  border-color: var(--red);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  color: var(--fg);
 }
 .provider-select option {
-  background-color: var(--bg);
-  color: var(--fg);
-  font-size: 11px;
+  background-color: #282c34; /* fallback hardcoded dark bg */
+  color: #abb2bf;
+  font-size: 12px;
   padding: 8px;
 }
 
