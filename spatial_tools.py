@@ -61,6 +61,8 @@ def _cache_projection(key, gdf):
     gdf = gdf.reset_index(drop=True)
     try:
         gdf_proj = gdf.to_crs(PROJ_CRS)
+        # Pre-build spatial index on projected data for instant queries
+        _ = gdf_proj.sindex
         _cache_proj[key] = gdf_proj
         # Pre-calculate area once and store it in both dataframes
         gdf["_area_ha"] = gdf_proj.geometry.area / 10000.0
@@ -68,6 +70,8 @@ def _cache_projection(key, gdf):
     except Exception as e:
         print(f"Failed to pre-project layer {key}: {e}")
         gdf["_area_ha"] = 0.0
+    # Pre-build spatial index on geographic data too
+    _ = gdf.sindex
     _cache[key] = gdf
     return gdf
 
@@ -117,10 +121,10 @@ def _load_layer(name):
 
 
 def _to_projected(gdf):
-    # Retrieve pre-projected layer from cache if it matches the base layer
+    # Direct lookup using id() for O(1) cache retrieval instead of iterating
     for key, cached_gdf in _cache.items():
-        if gdf is cached_gdf:
-            return _cache_proj.get(key, gdf.to_crs(PROJ_CRS))
+        if gdf is cached_gdf and key in _cache_proj:
+            return _cache_proj[key]
     return gdf.to_crs(PROJ_CRS)
 
 
@@ -513,33 +517,40 @@ def _load_walk_graph():
 
 def nearest_features(layer_name: str, lat: float, lon: float, n: int = 5) -> dict:
     try:
+        from pyproj import Transformer
         gdf = _load_layer(layer_name)
-        point = Point(lon, lat)
-        point_gdf = gpd.GeoDataFrame(geometry=[point], crs=SRC_CRS)
-        point_proj = _to_projected(point_gdf)
         gdf_proj = _to_projected(gdf)
-        projected_point = point_proj.geometry.iloc[0]
-        
+
+        # Project point directly with Transformer — avoids creating a GeoDataFrame
+        transformer = Transformer.from_crs(SRC_CRS, PROJ_CRS, always_xy=True)
+        px, py = transformer.transform(lon, lat)
+        projected_point = Point(px, py)
+
         # Optimize with spatial index bbox filter to limit distance calculations
-        bbox = (projected_point.x - 2000, projected_point.y - 2000, projected_point.x + 2000, projected_point.y + 2000)
+        bbox = (px - 2000, py - 2000, px + 2000, py + 2000)
         possible_matches_index = list(gdf_proj.sindex.intersection(bbox))
         if len(possible_matches_index) >= n:
             candidates = gdf_proj.iloc[possible_matches_index].copy()
         else:
             candidates = gdf_proj
-            
+
         candidates["_distance_m"] = candidates.geometry.distance(projected_point)
         nearest = candidates.nsmallest(n, "_distance_m").copy()
         nearest_geo = _to_geographic(nearest)
+
+        # Vectorized result building instead of slow iterrows()
         cols = [c for c in nearest_geo.columns if c not in ["geometry", "_distance_m"]]
-        results = []
-        for _, row in nearest_geo.iterrows():
-            rec = {c: row[c] for c in cols}
-            rec["distance_meters"] = round(float(nearest.loc[row.name, "_distance_m"]), 2)
-            if row.geometry.geom_type in ["Polygon", "MultiPolygon"]:
-                rec["centroid_lat"] = round(row.geometry.centroid.y, 6)
-                rec["centroid_lon"] = round(row.geometry.centroid.x, 6)
-            results.append(rec)
+        results = nearest_geo[cols].to_dict(orient="records")
+        distances = nearest["_distance_m"].round(2).tolist()
+        centroids_y = nearest_geo.geometry.centroid.y.round(6).tolist()
+        centroids_x = nearest_geo.geometry.centroid.x.round(6).tolist()
+        geom_types = nearest_geo.geometry.geom_type.tolist()
+        for i, rec in enumerate(results):
+            rec["distance_meters"] = float(distances[i])
+            if geom_types[i] in ["Polygon", "MultiPolygon"]:
+                rec["centroid_lat"] = float(centroids_y[i])
+                rec["centroid_lon"] = float(centroids_x[i])
+
         ma = _make_map_action(nearest_geo, layer_name=layer_name)
         return {
             "status": "success",
