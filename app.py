@@ -456,6 +456,7 @@ async def chat_stream(message: str, history: list, provider: str = "gemma-4-31b-
         )
 
         gemini_failed = False
+        last_err_msg = "Unknown error"
         is_spatial = is_spatial_query(message)
         for iteration in range(MAX_TOOL_ITERATIONS):
             is_first_turn = (iteration == 0) and is_spatial
@@ -484,6 +485,7 @@ async def chat_stream(message: str, history: list, provider: str = "gemma-4-31b-
                     traceback.print_exc()
                     print(f"Attempt {attempt + 1} for {provider} failed: {type(e).__name__}: {str(e)}")
                     last_err = e
+                    last_err_msg = f"{type(e).__name__}: {str(e)}"
                     if "429" in str(e) and "quota" in str(e).lower():
                         break
                     time.sleep(1.5 * (attempt + 1))
@@ -529,9 +531,10 @@ async def chat_stream(message: str, history: list, provider: str = "gemma-4-31b-
         traceback.print_exc()
         print(f"Gemini agent exception: {type(e).__name__}: {str(e)}, falling back to Ollama...")
         gemini_failed = True
+        last_err_msg = f"{type(e).__name__}: {str(e)}"
 
     if gemini_failed:
-        yield sse_event("thinking", "Gemini API unavailable. Falling back to local Ollama (Qwen2.5-Coder)...")
+        yield sse_event("thinking", f"Gemini API unavailable ({last_err_msg}). Falling back to local Ollama (Qwen2.5-Coder)...")
         async for event in ollama_chat_stream(message, history):
             yield event
 
