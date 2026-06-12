@@ -388,6 +388,8 @@
 
     if (activeRectangle) {
       studyAreaBounds = activeRectangle.getBounds();
+      map.removeLayer(activeRectangle); // Remove drawn box completely after selection
+      activeRectangle = null;
       showNotification('Study Area Selected! Loading clipped layers...', 'info');
       loadStudyAreaLayers(studyAreaBounds);
       
