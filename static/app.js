@@ -37,26 +37,30 @@
   function initMap() {
     map = L.map('map', {
       center: [6.92, 79.865],
-      zoom: 15,
+      zoom: 20,
       zoomControl: true,
       attributionControl: true,
-      preferCanvas: true
+      preferCanvas: true,
+      maxZoom: 22
     });
 
     const darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
       subdomains: 'abcd',
-      maxZoom: 19
+      maxZoom: 22,
+      maxNativeZoom: 19
     });
 
     const osmTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM contributors</a>',
-      maxZoom: 19
+      maxZoom: 22,
+      maxNativeZoom: 19
     });
 
     const satelliteTile = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      maxZoom: 19
+      maxZoom: 22,
+      maxNativeZoom: 19
     });
 
     // Default is CartoDB Dark Matter tile layer
@@ -1860,7 +1864,7 @@
             $('#featureCount').textContent = totalFeatures.toLocaleString();
           }
           if (data.data.center && Array.isArray(data.data.center)) {
-            map.setView(data.data.center, 15);
+            map.setView(data.data.center, 20);
           }
         }
         // Load default layers (building and road) on startup
