@@ -81,6 +81,7 @@ CRITICAL AGENT BEHAVIOR:
    - "road network" → get_layer_summary("road") or calculate_area_by_category("road", "road_class")
    - "buildings near X" → proximity_analysis("building", "main_use", "X", 500)
 6. PARALLEL TOOL CALLS: Call all relevant tools at once to minimize API rounds.
+7. ROUTING VS ISOCHRONE: When asked for a route, path, or directions between two locations, call ONLY `get_walking_route`. Do NOT call `get_network_isochrone` unless the user specifically asks for walking range, reachable area, catchment area, or accessibility within a time limit.
 
 To call tools, output a JSON list inside a single ```tool block:
 ```tool
